@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AegisLLM Security Dashboard</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #07111f;
+      --card: rgba(15, 29, 51, .92);
+      --card-2: rgba(20, 42, 72, .92);
+      --text: #eef6ff;
+      --muted: #9db1d0;
+      --ok: #4ade80;
+      --warn: #fbbf24;
+      --bad: #fb7185;
+      --line: #263c5d;
+      --accent: #60a5fa;
+      --violet: #a78bfa;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 10% 0%, rgba(96, 165, 250, .22), transparent 28rem),
+        radial-gradient(circle at 90% 10%, rgba(167, 139, 250, .16), transparent 30rem),
+        linear-gradient(135deg, #07111f 0%, #0a1424 100%);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    main { max-width: 1280px; margin: 0 auto; padding: 38px 20px 58px; }
+    header {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 20px;
+      align-items: end;
+      margin-bottom: 20px;
+    }
+    h1 { margin: 0 0 8px; font-size: clamp(2.2rem, 5vw, 5.4rem); letter-spacing: -.07em; }
+    h2 { margin: 0 0 14px; font-size: 1.08rem; color: var(--muted); font-weight: 800; }
+    h3 { margin: 0 0 8px; font-size: 1rem; }
+    p { margin: 0; color: var(--muted); line-height: 1.58; }
+    code { color: #bfdbfe; }
+    .pill, .tag {
+      border: 1px solid rgba(74, 222, 128, .35);
+      background: rgba(74, 222, 128, .12);
+      color: var(--ok);
+      padding: 10px 14px;
+      border-radius: 999px;
+      font-weight: 850;
+      white-space: nowrap;
+    }
+    .tag { padding: 4px 9px; font-size: .78rem; display: inline-flex; }
+    .tag.pending { border-color: rgba(251, 191, 36, .4); background: rgba(251, 191, 36, .12); color: var(--warn); }
+    .tag.blocked, .tag.failed { border-color: rgba(251, 113, 133, .4); background: rgba(251, 113, 133, .12); color: var(--bad); }
+    .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+    .two { display: grid; grid-template-columns: 1.15fr .85fr; gap: 14px; }
+    .card {
+      background: linear-gradient(180deg, var(--card-2), var(--card));
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      padding: 18px;
+      box-shadow: 0 18px 48px rgba(0, 0, 0, .24);
+    }
+    .hero {
+      display: grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+    .metric .value { font-size: 2.25rem; font-weight: 950; letter-spacing: -.05em; margin: 8px 0; }
+    .metric .label { color: var(--muted); font-size: .9rem; }
+    .ok { color: var(--ok); }
+    .warn { color: var(--warn); }
+    .bad { color: var(--bad); }
+    .accent { color: var(--accent); }
+    .section { margin-top: 14px; }
+    table { width: 100%; border-collapse: collapse; overflow: hidden; border-radius: 14px; }
+    th, td { padding: 11px 10px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+    th { color: var(--muted); font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; }
+    td { color: #dbeafe; font-size: .93rem; }
+    .bar { height: 9px; background: #0b1526; border-radius: 999px; overflow: hidden; margin-top: 10px; }
+    .bar span { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--ok)); }
+    .steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+    .step { background: rgba(8, 17, 31, .55); border: 1px solid var(--line); border-radius: 16px; padding: 12px; }
+    .step strong { display: block; margin-bottom: 6px; }
+    .step small { color: var(--accent); display: block; margin-bottom: 6px; }
+    .caps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+    .cap { background: rgba(8, 17, 31, .45); border: 1px solid var(--line); border-radius: 16px; padding: 12px; }
+    .cap-head { display: flex; justify-content: space-between; gap: 8px; align-items: start; margin-bottom: 8px; }
+    .scenario { cursor: pointer; }
+    .scenario:hover td { background: rgba(96, 165, 250, .07); }
+    .detail {
+      display: none;
+      margin-top: 10px;
+      padding: 12px;
+      border: 1px dashed var(--line);
+      border-radius: 14px;
+      background: rgba(8, 17, 31, .55);
+      color: var(--muted);
+    }
+    .detail.open { display: block; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace; font-size: .82rem; }
+    .footer { margin-top: 24px; color: var(--muted); font-size: .9rem; }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+    .button {
+      border: 1px solid var(--line);
+      background: rgba(96, 165, 250, .12);
+      color: var(--text);
+      border-radius: 12px;
+      padding: 10px 12px;
+      text-decoration: none;
+      font-weight: 800;
+    }
+    @media (max-width: 980px) {
+      header, .hero, .two { grid-template-columns: 1fr; }
+      .grid, .caps, .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .grid-3 { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 620px) {
+      .grid, .caps, .steps { grid-template-columns: 1fr; }
+      main { padding: 26px 14px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1>AegisLLM</h1>
+        <p id="summary">Carregando explicação do pipeline…</p>
+        <div class="actions">
+          <a class="button" href="/dashboard-data" target="_blank" rel="noreferrer">Ver JSON vivo</a>
+          <a class="button" href="/docs" target="_blank" rel="noreferrer">Ver OpenAPI</a>
+        </div>
+      </div>
+      <div class="pill" id="status">carregando…</div>
+    </header>
+
+    <section class="grid" id="metrics"></section>
+
+    <section class="hero section">
+      <div class="card">
+        <h2>O Que Ele Faz</h2>
+        <div class="caps" id="capabilities"></div>
+      </div>
+      <div class="card">
+        <h2>Avaliação Do Projeto</h2>
+        <div id="readiness"></div>
+        <div class="section" id="attackSurface"></div>
+      </div>
+    </section>
+
+    <section class="two section">
+      <div class="card">
+        <h2>Cobertura Dos Security Agents</h2>
+        <table>
+          <thead><tr><th>Caso</th><th>Categoria</th><th>OWASP</th><th>Tool</th><th>RAG</th><th>Dados</th></tr></thead>
+          <tbody id="coverageRows"></tbody>
+        </table>
+      </div>
+      <div class="card">
+        <h2>Único Pendente</h2>
+        <h3 id="openStepName">—</h3>
+        <p id="openStepDescription">—</p>
+        <p class="section"><span class="tag pending">pendente por escolha</span></p>
+      </div>
+    </section>
+
+    <section class="card section">
+      <h2>Pipeline Explicado</h2>
+      <div class="steps" id="pipeline"></div>
+    </section>
+
+    <section class="card section">
+      <h2>Cenários Executados Agora</h2>
+      <p>Clique numa linha para ver classificação, PII, ferramenta, hash de auditoria e motivo da decisão.</p>
+      <table>
+        <thead><tr><th>Cenário</th><th>Decisão</th><th>Classificação</th><th>Modelo</th><th>Motivo</th></tr></thead>
+        <tbody id="scenarioRows"></tbody>
+      </table>
+    </section>
+
+    <section class="two section">
+      <div class="card">
+        <h2>Benchmark</h2>
+        <table>
+          <thead><tr><th>Caso</th><th>Status</th><th>Esperado</th><th>Modelo</th><th>Latência</th></tr></thead>
+          <tbody id="benchmarkRows"></tbody>
+        </table>
+      </div>
+      <div class="card">
+        <h2>Security Gates</h2>
+        <table>
+          <thead><tr><th>Gate</th><th>Resultado</th></tr></thead>
+          <tbody id="gateRows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="two section">
+      <div class="card">
+        <h2>Roteamento De Modelos</h2>
+        <table>
+          <thead><tr><th>Fluxo</th><th>Classe</th><th>Escolhido</th><th>Ranking</th></tr></thead>
+          <tbody id="routingRows"></tbody>
+        </table>
+      </div>
+      <div class="card">
+        <h2>Recomendações Dos Agents</h2>
+        <table>
+          <thead><tr><th>Finding</th><th>Controle</th><th>Componente</th><th>Ação</th></tr></thead>
+          <tbody id="defenseRows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card section">
+      <h2>Triagem Operacional</h2>
+      <table>
+        <thead><tr><th>Ticket</th><th>Status</th><th>Owner</th><th>Prioridade</th><th>SLA</th><th>Próxima ação</th></tr></thead>
+        <tbody id="triageRows"></tbody>
+      </table>
+    </section>
+
+    <section class="card section">
+      <h2>Red Team Findings</h2>
+      <table>
+        <thead><tr><th>Ataque</th><th>Categoria</th><th>Severidade</th><th>OWASP</th><th>MITRE ATLAS</th><th>Resultado</th></tr></thead>
+        <tbody id="findingRows"></tbody>
+      </table>
+    </section>
+
+    <footer class="footer" id="footer"></footer>
+  </main>
+
+  <script>
+    const formatPercent = (value) => `${Math.round(value * 100)}%`;
+    const toneForDecision = (value) => value === "allowed" ? "ok" : "bad";
+    const escapeHtml = (value) => String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;");
+    const metricCard = (label, value, detail, tone = "ok") => `
+      <article class="card metric">
+        <div class="label">${label}</div>
+        <div class="value ${tone}">${value}</div>
+        <p>${detail}</p>
+        <div class="bar"><span style="width:${value.includes("%") ? value : "100%"}"></span></div>
+      </article>`;
+    const tag = (text, status = "active") => `<span class="tag ${status === "pending" ? "pending" : ""}">${text}</span>`;
+
+    function renderScenario(row, index) {
+      const detailId = `scenario-detail-${index}`;
+      return `
+        <tr class="scenario" onclick="document.getElementById('${detailId}').classList.toggle('open')">
+          <td>${escapeHtml(row.label)}</td>
+          <td class="${toneForDecision(row.decision)}">${escapeHtml(row.decision)}</td>
+          <td>${escapeHtml(row.classification)}</td>
+          <td>${escapeHtml(row.model ?? "-")}</td>
+          <td>${escapeHtml(row.reason)}</td>
+        </tr>
+        <tr><td colspan="5">
+          <div class="detail" id="${detailId}">
+            <strong>Prompt demo:</strong> ${escapeHtml(row.prompt)}<br>
+            <strong>Ferramenta:</strong> ${escapeHtml(row.tool ?? "nenhuma")}<br>
+            <strong>PII detectada:</strong> ${escapeHtml(row.pii_types.length ? row.pii_types.join(", ") : "nenhuma")}<br>
+            <strong>Tool result:</strong> <span class="mono">${escapeHtml(JSON.stringify(row.tool_result ?? null))}</span><br>
+            <strong>Audit trace:</strong> <span class="mono">${escapeHtml(row.audit.trace_id)}</span><br>
+            <strong>Prompt hash:</strong> <span class="mono">${escapeHtml(row.audit.prompt_hash)}</span><br>
+            <strong>Guarda prompt bruto?</strong> ${row.audit.stores_raw_prompt ? "sim" : "não"}
+          </div>
+        </td></tr>`;
+    }
+
+    async function loadDashboard() {
+      const response = await fetch("/dashboard-data");
+      const data = await response.json();
+      document.getElementById("summary").textContent = data.summary;
+      document.getElementById("status").textContent = data.status === "passed" ? "Gates passaram" : "Atenção";
+      document.getElementById("status").className = `pill ${data.status === "passed" ? "ok" : "bad"}`;
+      document.getElementById("metrics").innerHTML = [
+        metricCard("Attack Success Rate", formatPercent(data.redteam.attack_success_rate), "Meta ≤ 5%"),
+        metricCard("Blocked Rate", formatPercent(data.redteam.blocked_rate), `${data.redteam.cases} ataques testados`),
+        metricCard("Task Success", formatPercent(data.benchmark.task_success_rate), "Meta ≥ 85%"),
+        metricCard("p95 Latency", `${data.benchmark.latency_p95_ms} ms`, "Meta ≤ 4000 ms"),
+      ].join("");
+      document.getElementById("capabilities").innerHTML = data.capabilities.map((capability) => `
+        <article class="cap">
+          <div class="cap-head"><strong>${escapeHtml(capability.name)}</strong>${tag(capability.status, capability.status)}</div>
+          <p>${escapeHtml(capability.description)}</p>
+        </article>`).join("");
+      document.getElementById("readiness").innerHTML = `
+        <article class="metric">
+          <div class="label">Readiness</div>
+          <div class="value ok">${escapeHtml(data.security_agents.readiness.score)}%</div>
+          <p>Nível: <strong>${escapeHtml(data.security_agents.readiness.level)}</strong></p>
+          <p>Fora do escopo agora: ${escapeHtml(data.security_agents.readiness.excluded_by_scope.join(", "))}</p>
+        </article>`;
+      document.getElementById("attackSurface").innerHTML = `
+        <p><strong>${escapeHtml(data.security_agents.attack_surface.cases)}</strong> casos em
+        <strong>${escapeHtml(data.security_agents.attack_surface.categories.length)}</strong> categorias:
+        ${escapeHtml(data.security_agents.attack_surface.categories.join(", "))}.</p>`;
+      document.getElementById("coverageRows").innerHTML = data.security_agents.coverage.map((row) => `
+        <tr>
+          <td>${escapeHtml(row.name)}</td>
+          <td>${escapeHtml(row.category)}</td>
+          <td>${escapeHtml(row.owasp)}</td>
+          <td class="${row.tests_tooling ? "ok" : "warn"}">${row.tests_tooling ? "sim" : "não"}</td>
+          <td class="${row.tests_rag ? "ok" : "warn"}">${row.tests_rag ? "sim" : "não"}</td>
+          <td class="${row.tests_data_exfiltration ? "ok" : "warn"}">${row.tests_data_exfiltration ? "sim" : "não"}</td>
+        </tr>`).join("");
+      document.getElementById("openStepName").textContent = data.final_open_step.name;
+      document.getElementById("openStepDescription").textContent = data.final_open_step.description;
+      document.getElementById("pipeline").innerHTML = data.pipeline.map((step) => `
+        <article class="step">
+          <strong>${escapeHtml(step.name)}</strong>
+          <small>${escapeHtml(step.component)}</small>
+          <p>${escapeHtml(step.explanation)}</p>
+        </article>`).join("");
+      document.getElementById("scenarioRows").innerHTML = data.demo_scenarios.map(renderScenario).join("");
+      document.getElementById("benchmarkRows").innerHTML = data.benchmark.results.map((row) => `
+        <tr>
+          <td>${escapeHtml(row.name)}</td>
+          <td class="${row.success ? "ok" : "bad"}">${escapeHtml(row.status)}</td>
+          <td>${escapeHtml(row.expected)}</td>
+          <td>${escapeHtml(row.model ?? "-")}</td>
+          <td>${escapeHtml(row.latency_ms)} ms</td>
+        </tr>`).join("");
+      document.getElementById("gateRows").innerHTML = Object.entries(data.gates.checks).map(([name, passed]) => `
+        <tr><td>${escapeHtml(name)}</td><td class="${passed ? "ok" : "bad"}">${passed ? "passou" : "falhou"}</td></tr>
+      `).join("");
+      document.getElementById("routingRows").innerHTML = data.model_routing.map((route) => `
+        <tr>
+          <td>${escapeHtml(route.label)}</td>
+          <td>${escapeHtml(route.classification)}</td>
+          <td class="accent">${escapeHtml(route.chosen)} (${escapeHtml(route.provider)})</td>
+          <td>${route.ranked.map((model) => `${escapeHtml(model.name)} <span class="mono">u=${model.utility}</span>`).join("<br>")}</td>
+        </tr>`).join("");
+      document.getElementById("defenseRows").innerHTML = data.security_agents.defense.map((row) => `
+        <tr>
+          <td>${escapeHtml(row.finding)}</td>
+          <td>${escapeHtml(row.control)}</td>
+          <td>${escapeHtml(row.component)}</td>
+          <td>${escapeHtml(row.next_action)}</td>
+        </tr>
+      `).join("");
+      document.getElementById("triageRows").innerHTML = data.security_agents.triage.map((row) => `
+        <tr>
+          <td>${escapeHtml(row.title)}</td>
+          <td class="${row.status === "mitigated" ? "ok" : "bad"}">${escapeHtml(row.status)}</td>
+          <td>${escapeHtml(row.owner)}</td>
+          <td>${escapeHtml(row.priority)}</td>
+          <td>${escapeHtml(row.sla_hours)}h</td>
+          <td>${escapeHtml(row.next_action)}</td>
+        </tr>
+      `).join("");
+      document.getElementById("findingRows").innerHTML = data.redteam.findings.map((finding) => `
+        <tr>
+          <td>${escapeHtml(finding.name)}</td>
+          <td>${escapeHtml(finding.category)}</td>
+          <td>${escapeHtml(finding.severity)}</td>
+          <td>${escapeHtml(finding.owasp_id)}</td>
+          <td>${escapeHtml(finding.mitre_atlas_id)}</td>
+          <td class="${finding.attack_success ? "bad" : "ok"}">
+            ${finding.attack_success ? "passou pelo controle" : "mitigado"}
+          </td>
+        </tr>`).join("");
+      document.getElementById("footer").textContent =
+        `Dataset ${data.dataset_version} · gerado em ${data.generated_in_ms} ms · Python ${data.python_version ?? "local"}`;
+    }
+    loadDashboard().catch((error) => {
+      document.getElementById("status").textContent = "erro ao carregar";
+      document.getElementById("status").className = "pill bad";
+      document.getElementById("footer").textContent = error.message;
+    });
+  </script>
+</body>
+</html>

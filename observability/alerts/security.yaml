@@ -1,0 +1,8 @@
+groups:
+  - name: aegis-security
+    rules:
+      - alert: AegisAttackSuccessRateHigh
+        expr: aegis_attack_success_rate > 0.05
+        for: 5m
+        labels: {severity: critical}
+

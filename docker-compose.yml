@@ -1,0 +1,14 @@
+services:
+  aegis-api:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile
+    ports: ["8000:8000"]
+    environment:
+      AEGIS_ENV: local
+      AEGIS_API_TOKEN: ${AEGIS_API_TOKEN:?configure AEGIS_API_TOKEN}
+      AEGIS_TRUSTED_HOSTS: localhost,127.0.0.1
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]

@@ -1,0 +1,57 @@
+{
+  "title": "AegisLLM Overview",
+  "status": "implemented",
+  "description": "Painéis renderizados pela rota /dashboard da API FastAPI e alimentados por /dashboard-data.",
+  "panels": [
+    {
+      "title": "Security Gates",
+      "metric": "gates_passed",
+      "target": true
+    },
+    {
+      "title": "Attack Success Rate",
+      "metric": "attack_success_rate",
+      "target": "<= 0.05"
+    },
+    {
+      "title": "Blocked Rate",
+      "metric": "blocked_rate",
+      "target": ">= 0.95"
+    },
+    {
+      "title": "Task Success Rate",
+      "metric": "task_success_rate",
+      "target": ">= 0.85"
+    },
+    {
+      "title": "Structured Output Validity",
+      "metric": "structured_output_validity",
+      "target": ">= 0.98"
+    },
+    {
+      "title": "p95 Latency",
+      "metric": "latency_p95_ms",
+      "target": "<= 4000"
+    },
+    {
+      "title": "Policy Blocks",
+      "metric": "policy_block_rate",
+      "target": "monitor"
+    },
+    {
+      "title": "Executed Scenarios",
+      "metric": "demo_scenarios",
+      "target": "explain allow/block decisions"
+    },
+    {
+      "title": "Model Routing",
+      "metric": "model_routing",
+      "target": "show selected model and ranked alternatives"
+    },
+    {
+      "title": "Defense Recommendations",
+      "metric": "security_agents.defense",
+      "target": "show mitigation guidance per finding"
+    }
+  ]
+}

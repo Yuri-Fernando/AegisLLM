@@ -1,0 +1,1 @@
+{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","required":["timestamp","tenant_id","policy_decision","trace_id"],"properties":{"timestamp":{"type":"string"},"tenant_id":{"type":"string"},"policy_decision":{"type":"boolean"},"trace_id":{"type":"string"},"model":{"type":"string"}}}

@@ -1,0 +1,15 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aegis-gateway
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: aegis-gateway}}
+  template:
+    metadata: {labels: {app: aegis-gateway}}
+    spec:
+      containers:
+        - name: gateway
+          image: aegis-llm:local
+          ports: [{containerPort: 8000}]
+

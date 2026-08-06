@@ -1,0 +1,56 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "aegis-llm"
+version = "0.2.0"
+description = "Secure multi-LLM gateway, evaluation, red-team and AI governance laboratory"
+readme = "README.md"
+license = {file = "LICENSE"}
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+api = [
+  "fastapi>=0.128,<1",
+  "httpx>=0.27,<1",
+  "uvicorn[standard]>=0.40,<1",
+]
+dev = [
+  "bandit[toml]>=1.8,<2",
+  "mypy>=1.15,<2",
+  "pip-audit>=2.9,<3",
+  "pytest>=8,<10",
+  "ruff>=0.16,<1",
+]
+notebook = ["ipykernel>=6,<8", "jupyterlab>=4,<5"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["aegis", "apps", "evaluation", "redteam", "security_agents", "integrations", "observability"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+
+[tool.ruff]
+extend-exclude = ["_codex_backup", ".venv", "output"]
+line-length = 110
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "S"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["S101", "S105"]
+"notebooks/**" = ["E402", "I001", "S101"]
+
+[tool.bandit]
+exclude_dirs = ["tests", "_codex_backup", ".venv"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_unused_ignores = true
+ignore_missing_imports = true
